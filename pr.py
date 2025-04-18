@@ -67,11 +67,9 @@ def compute_pr(kf: int, log: Log, loop_closure_gt: LoopClosureGt) -> Dict[str, C
             fn=len(np.setdiff1d(gt_candidates, output_candidates))
         )
         if stage_is_binary(name):
-            # if name == 'pose_optimization':
-            #     breakpoint()
             # If the stage can only output one frame, as long as we got one TP, we don't consider the other true candidates to be false negatives
             I = lambda x: int(x > 0)
-            conf = ConfusionMatrix(tp=I(conf.tp), fp=I(conf.fp), fn=1-I(conf.tp))
+            conf = ConfusionMatrix(tp=I(conf.tp), fp=I(conf.fp), fn=I(conf.tp == 0 and len(gt_candidates) > 0))
         conf_dict[name] = conf
         input_candidates = output_candidates
 
