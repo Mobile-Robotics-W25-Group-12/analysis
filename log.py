@@ -39,24 +39,27 @@ class Log:
                 for row in reader:
                     frame_id = int(row[0])
                     candidates = list(map(int, row[1:]))
-                    candidates_dict[frame_id] = (candidates,)
+                    candidates_dict[frame_id] = candidates
             return candidates_dict
 
         def load_scored_candidates(file_path):
             candidates_dict = {}
+            scores_dict = {}
             with file_path.open() as f:
                 reader = csv.reader(f)
                 for row in reader:
                     frame_id = int(row[0])
                     candidates = list(map(int, row[1::2]))
                     scores = list(map(float, row[2::2]))
-                    candidates_dict[frame_id] = (candidates, scores)
-            return candidates_dict
+                    candidates_dict[frame_id] = candidates
+                    scores_dict[frame_id] = scores
+            return candidates_dict, scores_dict
 
         self.connected_frames = load_candidates(log_dir / "connected_frames.csv")
-        self.initial_candidates = load_scored_candidates(log_dir / "initial_candidates.csv")
-        self.consistent_candidates = load_scored_candidates(log_dir / "consistent_candidates.csv")
-        self.filtered_candidates = load_scored_candidates(log_dir / "filtered_candidates.csv")
+        self.initial_candidates, _ = load_scored_candidates(log_dir / "initial_candidates.csv")
+        self.filtered_candidates, _ = load_scored_candidates(log_dir / "filtered_candidates.csv")
+        self.acc_filtered_candidates = load_candidates(log_dir / 'acc_filtered_candidates.csv')
+        self.consistent_candidates, _ = load_scored_candidates(log_dir / "consistent_candidates.csv")
         self.matched_frames = load_candidates(log_dir / "matched_frames.csv")
         self.ransac_solved_frames = load_candidates(log_dir / "ransac_solved_frames.csv")
 
@@ -80,7 +83,7 @@ class Log:
 
 
 if __name__ == "__main__":
-    log = Log("20250417_221955")
+    log = Log("20250418_165109")
     print(log.get_closed_points())
     print(log.get_consistent_points())
     print(log.kf_info)
