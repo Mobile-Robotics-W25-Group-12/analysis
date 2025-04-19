@@ -25,7 +25,7 @@ class LoopClosureGt():
         return cls(f'kitti/scene_graphs/{sequence_str}.npy')
 
 if __name__ == '__main__':
-    log = Log("20250418_165109")
+    # log = Log("20250418_165109")
     loop_closure_gt = LoopClosureGt.for_kitti('06')
     # for kf in log.kf_ids():
     #     if kf not in log.connected_frames:
