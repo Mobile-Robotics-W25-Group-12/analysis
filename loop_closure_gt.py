@@ -26,7 +26,7 @@ class LoopClosureGt():
 
 if __name__ == '__main__':
     # log = Log("20250418_165109")
-    loop_closure_gt = LoopClosureGt.for_kitti('06')
+    loop_closure_gt = LoopClosureGt.for_kitti('05')
     # for kf in log.kf_ids():
     #     if kf not in log.connected_frames:
     #         continue
@@ -34,7 +34,8 @@ if __name__ == '__main__':
     #     candidates = loop_closure_gt.get_gt_candidates(kf, np.arange(1100), [])
     #     if candidates.shape[0] > 0:
     #         print(kf, candidates)
-    for kf in np.arange(1100):
-        candidates = loop_closure_gt.get_gt_candidates(kf, np.arange(1100), [])
+    n_frames = 2761
+    for kf in np.arange(n_frames):
+        candidates = loop_closure_gt.get_gt_candidates(kf, np.arange(n_frames), [])
         if candidates.shape[0] > 0:
             print(kf, candidates)

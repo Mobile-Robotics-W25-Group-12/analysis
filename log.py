@@ -8,13 +8,11 @@ import csv
 
 load_dotenv()
 
-orb_slam_path = Path(os.getenv("ORB_SLAM_PATH"))
-logs_path = orb_slam_path / "logs"
-
+ORB_SLAM_PATH = Path(os.getenv("ORB_SLAM_PATH"))
+LOGS_PATH = ORB_SLAM_PATH / "logs"
 
 class Log:
-    def __init__(self, name: str, vectorFilepath: str = None):
-        log_dir = logs_path / name
+    def __init__(self, log_dir: Path, vectorFilepath: str = None):
         log_path = log_dir / "log.csv"
         self.log_df = pandas.read_csv(log_path)
 
@@ -28,7 +26,7 @@ class Log:
 
         self.vectors = None
         if "vectorFilepath" in self.params:
-            self.vectors = np.load(orb_slam_path / self.params["vectorFilepath"])
+            self.vectors = np.load(ORB_SLAM_PATH / self.params["vectorFilepath"])
         if self.vectors is None and vectorFilepath is not None:
             self.vectors = np.load(vectorFilepath)
 
@@ -65,6 +63,10 @@ class Log:
 
         self.kitti_trajectory_path = log_dir / "CameraTrajectoryKITTI.txt"
 
+    @classmethod
+    def from_logs_dir(cls, name: str):
+        return cls(LOGS_PATH / name)
+
     def kf_ids(self):
         return self.log_df["id"].tolist()
 
@@ -83,7 +85,7 @@ class Log:
 
 
 if __name__ == "__main__":
-    log = Log("20250418_165109")
+    log = Log.from_logs_dir("20250419_150027")
     print(log.get_closed_points())
-    print(log.get_consistent_points())
-    print(log.kf_info)
+    # print(log.get_consistent_points())
+    # print(log.kf_info)

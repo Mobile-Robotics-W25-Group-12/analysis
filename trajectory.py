@@ -66,7 +66,7 @@ class TrajectoryAnalyzer():
         return rpe_metric.get_all_statistics()
 
 if __name__ == '__main__':
-    log = Log("20250418_140133")
+    log = Log.from_logs_dir("20250419_152737")
     analyzer = TrajectoryAnalyzer.for_kitti(log.kitti_trajectory_path, '06')
-    analyzer.plot_trajectories()
     print(analyzer.get_ape_stats())
+    analyzer.plot_trajectories()
