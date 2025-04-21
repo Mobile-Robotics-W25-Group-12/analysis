@@ -20,12 +20,12 @@ class TrajectoryAnalyzer():
         times = np.array([float(x) for x in Path(times_file).read_text().split()])
 
         traj_ref = PoseTrajectory3D(
-            timestamps=times,
+            timestamps=times[:len(traj_ref.poses_se3)],
             poses_se3=traj_ref.poses_se3
         )
 
         traj_est = PoseTrajectory3D(
-            timestamps=times,
+            timestamps=times[:len(traj_est.poses_se3)],
             poses_se3=traj_est.poses_se3
         )
 

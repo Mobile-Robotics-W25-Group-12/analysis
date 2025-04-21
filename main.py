@@ -1,3 +1,4 @@
+import itertools
 import json
 import os
 from pathlib import Path
@@ -24,31 +25,57 @@ def get_average_pr(logs: List[Log], loop_closure_gt: LoopClosureGt) -> pd.DataFr
     averaged_df = combined_df.groupby('stage', as_index=False, sort=False).mean()
     return averaged_df
 
-def get_loop_closure_points(logs: List[Log]):
+def get_combined_pr(logs_list: List[List[Log]], labels: List[str], loop_closure_gt: LoopClosureGt):
+    pr_list = []
+    for logs, labels in zip(logs_list, labels):
+        pr = get_average_pr(logs, loop_closure_gt)
+        pr_list.append(pr)
+
+    combined_pr = pd.concat(
+        {
+            label: pr.set_index('stage') for label, pr in zip(labels, pr_list)
+        },
+        axis=1
+    ).transpose()
+
+    combined_pr = combined_pr.loc[:, pr_list[0]['stage']]
+    return combined_pr
+
+def get_first_loop_closure_points(logs: List[Log]):
     return [log.get_closed_points()[0][0] for log in logs]
 
-def plot_jitter(logs_dict: Dict[str, List[Log]], times, title: str):  
+def get_all_loop_closure_points(logs: List[Log]):
+    return list((kf, i) for log in logs for i, (kf, _) in enumerate(log.get_closed_points()))
+
+def plot_jitter(logs_list: List[List[Log]], labels, times, title: str):  
     import matplotlib.pyplot as plt
 
-    sns.set_theme(font_scale=2)
+    sns.set_theme(font_scale=1)
 
-    boq_points = get_loop_closure_points(logs_dict['boq'])
-    bow_points = get_loop_closure_points(logs_dict['bow'])
-
-    boq_times = times[boq_points]
-    bow_times = times[bow_points]
+    times_list = []
+    indices_list = []
+    for logs in logs_list:
+        points_and_indices = get_all_loop_closure_points(logs)
+        points = [x[0] for x in points_and_indices]
+        indices = [x[1] + 1 for x in points_and_indices]
+        times_list.append(times[points])
+        indices_list.append(indices)
 
     data = {
-        'Model': ['BoQ'] * len(boq_times) + ['BoW'] * len(bow_times),
-        'Points': np.concatenate((boq_times, bow_times))
+        'Model': list(itertools.chain.from_iterable([label] * len(vals) for vals, label in zip(times_list, labels))),
+        'Points': np.concatenate(times_list),
+        'Indices': np.concatenate(indices_list)
     }
 
     df = pd.DataFrame(data)
 
+    # extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True} if df['Indices'].nunique() > 1 else {}
+    extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True}
+
     plt.figure(figsize=(10, 6))
-    sns.swarmplot(x='Points',  y='Model', data=df, size=16, alpha=0.7, 
-        palette={'BoQ': 'green', 'BoW': 'blue'}
-    )
+    g = sns.swarmplot(x='Points',  y='Model', data=df, size=8, alpha=0.7, **extra_params)
+    if g.legend_:
+        g.legend_.set_title('Loop Closure Index')
 
     plt.xlabel('Time (s)')
     plt.ylabel('Model')
@@ -65,20 +92,20 @@ def get_ape_rmses(logs: List[Log], sequence_name: str):
     rmse_vals = np.array(rmse_vals)
     return rmse_vals
 
-def plot_error(boq_vals, bow_vals, title):
+def plot_error(vals_list, labels, title):
     import matplotlib.pyplot as plt
 
     sns.set_theme(font_scale=2)
     
     data = {
-        'Model': ['BoQ'] * len(boq_vals) + ['BoW'] * len(bow_vals),
-        'RMSE': np.concatenate((boq_vals, bow_vals))
+        'Model': list(itertools.chain.from_iterable([label] * len(vals) for vals, label in zip(vals_list, labels))),
+        'RMSE': np.concatenate(vals_list)
     }
 
     df = pd.DataFrame(data)
 
     plt.figure(figsize=(10, 6))
-    sns.boxplot(y='Model', x='RMSE', data=df, palette={'BoQ': 'green', 'BoW': 'blue'})
+    sns.boxplot(y='Model', x='RMSE', data=df)
 
     plt.ylabel('Model')
     plt.xlabel('APE RMSE')
@@ -90,7 +117,7 @@ def plot_trajectory(log: Log, sequence_name: str):
     analyzer = TrajectoryAnalyzer.for_kitti(log.kitti_trajectory_path, sequence_name)
     analyzer.plot_trajectories()
 
-def analyze(experiment_name, sequence_name):
+def load_experiment(experiment_name: str):
     experiment_dir = EXPERIMENTS_PATH / experiment_name
 
     logs_dict: Dict[str, List[Log]] = {}
@@ -105,32 +132,41 @@ def analyze(experiment_name, sequence_name):
         for trial in trials:
             log = Log(test_case_dir / trial)
             logs_dict[test_case].append(log)
+    return logs_dict
 
-    boq_rmse = get_ape_rmses(logs_dict['boq'], sequence_name)
-    bow_rmse = get_ape_rmses(logs_dict['bow'], sequence_name)
+def analyze(logs_list: List[List[Log]], labels: List[str], sequence_name: str):
+    rmses = []
+    for logs, label in zip(logs_list, labels):
+        rmses.append(get_ape_rmses(logs, sequence_name))
     # print(boq_rmse)
     # plot_trajectory(logs_dict['boq'][0], '06')
 
-    plot_error(boq_rmse, bow_rmse, 'Absolute Pose Error final RMSE in KITTI 06 Augmented Brightness')
+    plot_error(rmses, labels, f'Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness')
 
     times = np.array([float(x) for x in Path(f'kitti/times/{sequence_name}.txt').read_text().split()])
-    plot_jitter(logs_dict, times, 'Time of first loop closure in KITTI 06 Augmented Brightness')
-
+    plot_jitter(logs_list, labels, times, f'Time of loop closure in KITTI {sequence_name} Augmented Brightness')
+    
     loop_closure_gt = LoopClosureGt.for_kitti(sequence_name)
-    boq_pr = get_average_pr(logs_dict['boq'], loop_closure_gt)
-    bow_pr = get_average_pr(logs_dict['bow'], loop_closure_gt)
-
-    combined_pr = pd.concat(
-        {
-            'BoQ': boq_pr.set_index('stage'),
-            'BoW': bow_pr.set_index('stage')
-        },
-        axis=1
-    ).transpose()
-
-    combined_pr = combined_pr.loc[:, boq_pr['stage']]
-    # print(combined_pr.to_latex(float_format = '{:.2g}'.format))
-    print(combined_pr)
+    combined_pr = get_combined_pr(logs_list, labels, loop_closure_gt)
+    
+    print(combined_pr.to_latex(float_format = '{:.2g}'.format))
+    # print(combined_pr)
 
 if __name__ == '__main__':
-    analyze('06_brightness', '06')
+    sequence_name = '06'
+
+    logs_dict_default = load_experiment(f'{sequence_name}_brightness')
+    logs_dict_04 = load_experiment(f'{sequence_name}_brightness_0.4')
+    logs_dict_no_consistency = load_experiment(f'{sequence_name}_brightness_0.4_no_consistency')
+
+    logs_list = [
+        logs_dict_default['bow'],
+        logs_dict_no_consistency['bow'],
+        logs_dict_default['boq'],
+        logs_dict_04['boq'],
+        logs_dict_no_consistency['boq'],
+    ]
+
+    labels = ['BoW [c=3]', 'BoW [c=1]', 'BoQ [m=0.6, c=3]', 'BoQ [m=0.4, c=3]', 'BoQ [m=0.4, c=1]']
+
+    analyze(logs_list, labels, sequence_name)
