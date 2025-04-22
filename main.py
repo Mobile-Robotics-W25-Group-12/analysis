@@ -153,13 +153,12 @@ def load_experiment(experiment_name: str):
     return logs_dict
 
 def analyze(logs_list: List[List[Log]], labels: List[str], sequence_name: str):
-    # rmses = []
-    # for logs, label in zip(logs_list, labels):
-    #     rmses.append(get_ape_rmses(logs, sequence_name))
-    # # print(boq_rmse)
-    # # plot_trajectory(logs_dict['boq'][0], '06')
+    rmses = []
+    for logs, label in zip(logs_list, labels):
+        rmses.append(get_ape_rmses(logs, sequence_name))
+    # plot_trajectory(logs_dict['boq'][0], '06')
 
-    # plot_error(rmses, labels, f'Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_ape.pdf')
+    plot_error(rmses, labels, f'Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_ape.pdf')
 
     times = np.array([float(x) for x in Path(f'kitti/times/{sequence_name}.txt').read_text().split()])
     plot_jitter(logs_list, labels, times, f'Time of loop closure in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_times.pdf')
