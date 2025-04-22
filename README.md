@@ -1,8 +1,22 @@
-## Running
+# Analysis
 
-Create a `.env` file in this directory with `ORB_SLAM_PATH=path_to_your_orb_slam_2_repo`
+This repository is for analyzing loop closure experiments ran in the ORB-SLAM2 repository.
 
-## Log file column meanings
+## Setup
+
+Create a `.env` file in this directory with `ORB_SLAM_PATH=path_to_your_orb_slam_2_repo`. This repository should contain your experiment folders in a directory `experiments`.
+
+Install the requirements with `pip install -r requirements.txt`. Python 3.10+ required.
+
+## Usage
+
+### Running all analysis
+
+In `main.py`, modify the example in the `main()` function to load your experiment(s) and then perform analysis. The script will output plots in the `plots` directory. These include a scatter plot of the loop closure times, a box-and-whisker plot of the absolute pose error RMSE, and a LaTeX formatted table of the precision and recall of each loop closure stage.
+
+### Log file columns
+
+Each experiment trial has a `log.csv` file, which is loaded into a pandas dataframe on the `Log` object for analysis. The columns are as follows.
 
 - `numInitialCandidates` - number of candidates initially pulled from the database (this excludes connected frames and frames that share no words)
 - `numFilteredCandidates` - number of filtered candidates (score greater than the lower score)
