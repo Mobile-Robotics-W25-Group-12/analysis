@@ -19,41 +19,47 @@ load_dotenv()
 ORB_SLAM_PATH = Path(os.getenv("ORB_SLAM_PATH"))
 EXPERIMENTS_PATH = ORB_SLAM_PATH / "experiments"
 
+
 def get_average_pr(logs: List[Log], loop_closure_gt: LoopClosureGt) -> pd.DataFrame:
     dfs = [compute_log_precision_recall(log, loop_closure_gt) for log in logs]
     combined_df = pd.concat(dfs)
-    averaged_df = combined_df.groupby('stage', as_index=False, sort=False).mean()
+    averaged_df = combined_df.groupby("stage", as_index=False, sort=False).mean()
     return averaged_df
 
-def get_combined_pr(logs_list: List[List[Log]], labels: List[str], loop_closure_gt: LoopClosureGt):
+
+def get_combined_pr(
+    logs_list: List[List[Log]], labels: List[str], loop_closure_gt: LoopClosureGt
+):
     pr_list = []
     for logs, labels in zip(logs_list, labels):
         pr = get_average_pr(logs, loop_closure_gt)
         pr_list.append(pr)
 
     combined_pr = pd.concat(
-        {
-            label: pr.set_index('stage') for label, pr in zip(labels, pr_list)
-        },
-        axis=1
+        {label: pr.set_index("stage") for label, pr in zip(labels, pr_list)}, axis=1
     ).transpose()
 
-    combined_pr = combined_pr.loc[:, pr_list[0]['stage']]
+    combined_pr = combined_pr.loc[:, pr_list[0]["stage"]]
     return combined_pr
+
 
 def get_first_loop_closure_points(logs: List[Log]):
     return [log.get_closed_points()[0][0] for log in logs]
 
-def get_all_loop_closure_points(logs: List[Log]):
-    return list((kf, i) for log in logs for i, (kf, _) in enumerate(log.get_closed_points()))
 
-def plot_jitter(logs_list: List[List[Log]], labels, times, title: str, pdf_name = None):  
+def get_all_loop_closure_points(logs: List[Log]):
+    return list(
+        (kf, i) for log in logs for i, (kf, _) in enumerate(log.get_closed_points())
+    )
+
+
+def plot_jitter(logs_list: List[List[Log]], labels, times, title: str, pdf_name=None):
     import matplotlib.pyplot as plt
 
     sns.set_theme(font_scale=3)
-    
-    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
-    plt.rc('text', usetex=True)
+
+    plt.rc("font", **{"family": "serif", "serif": ["Times New Roman"]})
+    plt.rc("text", usetex=True)
 
     times_list = []
     indices_list = []
@@ -65,125 +71,184 @@ def plot_jitter(logs_list: List[List[Log]], labels, times, title: str, pdf_name 
         indices_list.append(indices)
 
     data = {
-        'Model': list(itertools.chain.from_iterable([label] * len(vals) for vals, label in zip(times_list, labels))),
-        'Points': np.concatenate(times_list),
-        'Indices': np.concatenate(indices_list)
+        "Model": list(
+            itertools.chain.from_iterable(
+                [label] * len(vals) for vals, label in zip(times_list, labels)
+            )
+        ),
+        "Points": np.concatenate(times_list),
+        "Indices": np.concatenate(indices_list),
     }
 
     df = pd.DataFrame(data)
 
-    extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True} if df['Indices'].nunique() > 1 else {}
-    # extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True}
+    extra_params = (
+        {"hue": "Indices", "palette": "flare", "dodge": True}
+        if df["Indices"].nunique() > 1
+        else {}
+    )
 
     plt.figure(figsize=(14, 10))
-    g = sns.swarmplot(x='Points',  y='Model', data=df, size=10, alpha=0.7, **extra_params)
-    
+    g = sns.swarmplot(
+        x="Points", y="Model", data=df, size=10, alpha=0.7, **extra_params
+    )
+
     if g.legend_:
-        # g.legend_.set_title('Loop Closure Index')
         g.legend_.remove()
 
-    plt.xlabel('Time (s)')
-    plt.ylabel('')
-
-    # plt.ylabel('Model')
-    # plt.title(title)
+    plt.xlabel("Time (s)")
+    plt.ylabel("")
+    plt.title(title)
 
     if pdf_name:
-        Path('plots').mkdir(exist_ok=True)
-        plt.savefig(f'plots/{pdf_name}', format='pdf', bbox_inches='tight')
+        Path("plots").mkdir(exist_ok=True)
+        plt.savefig(f"plots/{pdf_name}", format="pdf", bbox_inches="tight")
 
     plt.show()
+
 
 def get_ape_rmses(logs: List[Log], sequence_name: str):
     rmse_vals = []
     for log in logs:
-        analyzer = TrajectoryAnalyzer.for_kitti(log.kitti_trajectory_path, sequence_name)
+        analyzer = TrajectoryAnalyzer.for_kitti(
+            log.kitti_trajectory_path, sequence_name
+        )
         stats = analyzer.get_ape_stats()
-        rmse_vals.append(stats['rmse'])
+        rmse_vals.append(stats["rmse"])
     rmse_vals = np.array(rmse_vals)
     return rmse_vals
+
 
 def plot_error(vals_list, labels, title, pdf_name=None):
     import matplotlib.pyplot as plt
 
     sns.set_theme(font_scale=3)
-    
-    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
-    plt.rc('text', usetex=True)
-    
+
+    plt.rc("font", **{"family": "serif", "serif": ["Times New Roman"]})
+    plt.rc("text", usetex=True)
+
     data = {
-        'Model': list(itertools.chain.from_iterable([label] * len(vals) for vals, label in zip(vals_list, labels))),
-        'RMSE': np.concatenate(vals_list)
+        "Model": list(
+            itertools.chain.from_iterable(
+                [label] * len(vals) for vals, label in zip(vals_list, labels)
+            )
+        ),
+        "RMSE": np.concatenate(vals_list),
     }
 
     df = pd.DataFrame(data)
 
     plt.figure(figsize=(14, 4))
-    fig = sns.boxplot(y='Model', x='RMSE', data=df)
+    fig = sns.boxplot(y="Model", x="RMSE", data=df)
 
-    plt.ylabel('')
-    plt.xlabel('APE RMSE')
-    # plt.title(title)
-    
+    plt.ylabel("")
+    plt.xlabel("APE RMSE")
+
     if pdf_name:
-        Path('plots').mkdir(exist_ok=True)
-        plt.savefig(f'plots/{pdf_name}', format='pdf', bbox_inches='tight')
+        Path("plots").mkdir(exist_ok=True)
+        plt.savefig(f"plots/{pdf_name}", format="pdf", bbox_inches="tight")
 
     plt.show()
+
 
 def plot_trajectory(log: Log, sequence_name: str):
     analyzer = TrajectoryAnalyzer.for_kitti(log.kitti_trajectory_path, sequence_name)
     analyzer.plot_trajectories()
+
 
 def load_experiment(experiment_name: str):
     experiment_dir = EXPERIMENTS_PATH / experiment_name
 
     logs_dict: Dict[str, List[Log]] = {}
 
-    with (experiment_dir / 'test_cases.json').open() as f:
+    with (experiment_dir / "test_cases.json").open() as f:
         test_cases = json.load(f)
     for test_case in test_cases:
         logs_dict[test_case] = []
         test_case_dir = experiment_dir / test_case
-        with (test_case_dir / 'trials.json').open() as f:
+        with (test_case_dir / "trials.json").open() as f:
             trials = json.load(f)
         for trial in trials:
             log = Log(test_case_dir / trial)
             logs_dict[test_case].append(log)
     return logs_dict
 
-def analyze(logs_list: List[List[Log]], labels: List[str], sequence_name: str):
+
+def analyze(
+    logs_list: List[List[Log]],
+    labels: List[str],
+    sequence_name: str,
+    times: "np.ndarray",
+    loop_closure_gt: LoopClosureGt,
+):
+    """
+    Analyze a set of experiments and output plots.
+    Args:
+        logs_list (List[List[Log]]): A list of log lists, where each log lists is the trial logs for a certain test case
+        labels (List[str]): A list of labels corresponding to each list of logs in `logs_list`
+        sequence_name (str): Name of the sequence
+        times: Array of frame timestamps in seconds
+        loop_closure_gt (LoopClosureGt): Loop closure ground truth information
+    """
+
     rmses = []
     for logs, label in zip(logs_list, labels):
         rmses.append(get_ape_rmses(logs, sequence_name))
-    # plot_trajectory(logs_dict['boq'][0], '06')
 
-    plot_error(rmses, labels, f'Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_ape.pdf')
+    plot_error(
+        rmses,
+        labels,
+        f"Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness",
+        f"{sequence_name}_ape.pdf",
+    )
 
-    times = np.array([float(x) for x in Path(f'kitti/times/{sequence_name}.txt').read_text().split()])
-    plot_jitter(logs_list, labels, times, f'Time of loop closure in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_times.pdf')
-    
-    loop_closure_gt = LoopClosureGt.for_kitti(sequence_name)
+    plot_jitter(
+        logs_list,
+        labels,
+        times,
+        f"Time of loop closure in KITTI {sequence_name} Augmented Brightness",
+        f"{sequence_name}_times.pdf",
+    )
+
     combined_pr = get_combined_pr(logs_list, labels, loop_closure_gt)
-    
-    print(combined_pr.to_latex(float_format = '{:.2g}'.format))
-    # print(combined_pr)
 
-if __name__ == '__main__':
-    sequence_name = '05'
+    Path(f"plots/precision_recall_{sequence_name}").write_text(
+        combined_pr.to_latex(float_format="{:.2g}".format)
+    )
 
-    logs_dict_default = load_experiment(f'{sequence_name}_brightness')
-    logs_dict_04 = load_experiment(f'{sequence_name}_brightness_0.4')
-    logs_dict_no_consistency = load_experiment(f'{sequence_name}_brightness_0.4_no_consistency')
+
+def main():
+    sequence_name = "06"
+
+    logs_dict_default = load_experiment(f"{sequence_name}_brightness")
+    logs_dict_04 = load_experiment(f"{sequence_name}_brightness_0.4")
+    logs_dict_no_consistency = load_experiment(
+        f"{sequence_name}_brightness_0.4_no_consistency"
+    )
 
     logs_list = [
-        logs_dict_default['bow'],
-        logs_dict_no_consistency['bow'],
-        logs_dict_default['boq'],
-        logs_dict_04['boq'],
-        logs_dict_no_consistency['boq'],
+        logs_dict_default["bow"],
+        logs_dict_no_consistency["bow"],
+        logs_dict_default["boq"],
+        logs_dict_04["boq"],
+        logs_dict_no_consistency["boq"],
     ]
 
-    labels = ['BoW [c=3]', 'BoW [c=1]', 'BoQ [m=0.6, c=3]', 'BoQ [m=0.4, c=3]', 'BoQ [m=0.4, c=1]']
+    labels = [
+        "BoW [c=3]",
+        "BoW [c=1]",
+        "BoQ [m=0.6, c=3]",
+        "BoQ [m=0.4, c=3]",
+        "BoQ [m=0.4, c=1]",
+    ]
 
-    analyze(logs_list, labels, sequence_name)
+    times = np.array(
+        [float(x) for x in Path(f"kitti/times/{sequence_name}.txt").read_text().split()]
+    )
+    loop_closure_gt = LoopClosureGt.for_kitti(sequence_name)
+
+    analyze(logs_list, labels, sequence_name, times, loop_closure_gt)
+
+
+if __name__ == "__main__":
+    main()

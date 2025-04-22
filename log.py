@@ -11,8 +11,19 @@ load_dotenv()
 ORB_SLAM_PATH = Path(os.getenv("ORB_SLAM_PATH"))
 LOGS_PATH = ORB_SLAM_PATH / "logs"
 
+
 class Log:
     def __init__(self, log_dir: Path, vectorFilepath: str = None):
+        """Construct a Log of a run from the ORB-SLAM 2 repository.
+
+        Args:
+            log_dir (Path): Path to the log directory.
+            vectorFilepath (str, optional): Path to the .npy vectors file used for the BoQ model.
+
+        Returns:
+            _type_: _description_
+        """
+
         log_path = log_dir / "log.csv"
         self.log_df = pandas.read_csv(log_path)
 
@@ -54,12 +65,22 @@ class Log:
             return candidates_dict, scores_dict
 
         self.connected_frames = load_candidates(log_dir / "connected_frames.csv")
-        self.initial_candidates, _ = load_scored_candidates(log_dir / "initial_candidates.csv")
-        self.filtered_candidates, _ = load_scored_candidates(log_dir / "filtered_candidates.csv")
-        self.acc_filtered_candidates = load_candidates(log_dir / 'acc_filtered_candidates.csv')
-        self.consistent_candidates, _ = load_scored_candidates(log_dir / "consistent_candidates.csv")
+        self.initial_candidates, _ = load_scored_candidates(
+            log_dir / "initial_candidates.csv"
+        )
+        self.filtered_candidates, _ = load_scored_candidates(
+            log_dir / "filtered_candidates.csv"
+        )
+        self.acc_filtered_candidates = load_candidates(
+            log_dir / "acc_filtered_candidates.csv"
+        )
+        self.consistent_candidates, _ = load_scored_candidates(
+            log_dir / "consistent_candidates.csv"
+        )
         self.matched_frames = load_candidates(log_dir / "matched_frames.csv")
-        self.ransac_solved_frames = load_candidates(log_dir / "ransac_solved_frames.csv")
+        self.ransac_solved_frames = load_candidates(
+            log_dir / "ransac_solved_frames.csv"
+        )
 
         self.kitti_trajectory_path = log_dir / "CameraTrajectoryKITTI.txt"
 

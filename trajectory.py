@@ -12,7 +12,8 @@ from evo.core.units import Unit
 
 from log import Log
 
-class TrajectoryAnalyzer():
+
+class TrajectoryAnalyzer:
     def __init__(self, est_file, ref_file, times_file):
         traj_ref = file_interface.read_kitti_poses_file(ref_file)
         traj_est = file_interface.read_kitti_poses_file(est_file)
@@ -20,13 +21,11 @@ class TrajectoryAnalyzer():
         times = np.array([float(x) for x in Path(times_file).read_text().split()])
 
         traj_ref = PoseTrajectory3D(
-            timestamps=times[:len(traj_ref.poses_se3)],
-            poses_se3=traj_ref.poses_se3
+            timestamps=times[: len(traj_ref.poses_se3)], poses_se3=traj_ref.poses_se3
         )
 
         traj_est = PoseTrajectory3D(
-            timestamps=times[:len(traj_est.poses_se3)],
-            poses_se3=traj_est.poses_se3
+            timestamps=times[: len(traj_est.poses_se3)], poses_se3=traj_est.poses_se3
         )
 
         max_diff = 0.01
@@ -43,12 +42,12 @@ class TrajectoryAnalyzer():
         ref_file = f"kitti/poses/{sequence_str}.txt"
         times_file = f"kitti/times/{sequence_str}.txt"
         return cls(est_file, ref_file, times_file)
-    
+
     def plot_trajectories(self):
         fig = plt.figure()
         traj_by_label = {
             "estimate (aligned)": self.traj_est_aligned,
-            "reference": self.traj_ref
+            "reference": self.traj_ref,
         }
         plot.trajectories(fig, traj_by_label, plot.PlotMode.xyz)
         plt.show()
@@ -58,15 +57,17 @@ class TrajectoryAnalyzer():
         ape_metric = metrics.APE(pose_relation)
         ape_metric.process_data((self.traj_ref, self.traj_est_aligned))
         return ape_metric.get_all_statistics()
-    
+
     def get_rpe_stats(self):
         pose_relation = metrics.PoseRelation.translation_part
         rpe_metric = metrics.RPE(pose_relation)
         rpe_metric.process_data((self.traj_ref, self.traj_est_aligned))
         return rpe_metric.get_all_statistics()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
+    # Example of analyzing trajectory
     log = Log.from_logs_dir("20250419_152737")
-    analyzer = TrajectoryAnalyzer.for_kitti(log.kitti_trajectory_path, '06')
+    analyzer = TrajectoryAnalyzer.for_kitti(log.kitti_trajectory_path, "06")
     print(analyzer.get_ape_stats())
     analyzer.plot_trajectories()
