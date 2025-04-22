@@ -47,10 +47,13 @@ def get_first_loop_closure_points(logs: List[Log]):
 def get_all_loop_closure_points(logs: List[Log]):
     return list((kf, i) for log in logs for i, (kf, _) in enumerate(log.get_closed_points()))
 
-def plot_jitter(logs_list: List[List[Log]], labels, times, title: str):  
+def plot_jitter(logs_list: List[List[Log]], labels, times, title: str, pdf_name = None):  
     import matplotlib.pyplot as plt
 
-    sns.set_theme(font_scale=1)
+    sns.set_theme(font_scale=3)
+    
+    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
+    plt.rc('text', usetex=True)
 
     times_list = []
     indices_list = []
@@ -69,17 +72,25 @@ def plot_jitter(logs_list: List[List[Log]], labels, times, title: str):
 
     df = pd.DataFrame(data)
 
-    # extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True} if df['Indices'].nunique() > 1 else {}
-    extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True}
+    extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True} if df['Indices'].nunique() > 1 else {}
+    # extra_params = {'hue': 'Indices', 'palette': 'flare', 'dodge': True}
 
-    plt.figure(figsize=(10, 6))
-    g = sns.swarmplot(x='Points',  y='Model', data=df, size=8, alpha=0.7, **extra_params)
+    plt.figure(figsize=(14, 10))
+    g = sns.swarmplot(x='Points',  y='Model', data=df, size=10, alpha=0.7, **extra_params)
+    
     if g.legend_:
-        g.legend_.set_title('Loop Closure Index')
+        # g.legend_.set_title('Loop Closure Index')
+        g.legend_.remove()
 
     plt.xlabel('Time (s)')
-    plt.ylabel('Model')
-    plt.title(title)
+    plt.ylabel('')
+
+    # plt.ylabel('Model')
+    # plt.title(title)
+
+    if pdf_name:
+        Path('plots').mkdir(exist_ok=True)
+        plt.savefig(f'plots/{pdf_name}', format='pdf', bbox_inches='tight')
 
     plt.show()
 
@@ -92,10 +103,13 @@ def get_ape_rmses(logs: List[Log], sequence_name: str):
     rmse_vals = np.array(rmse_vals)
     return rmse_vals
 
-def plot_error(vals_list, labels, title):
+def plot_error(vals_list, labels, title, pdf_name=None):
     import matplotlib.pyplot as plt
 
-    sns.set_theme(font_scale=2)
+    sns.set_theme(font_scale=3)
+    
+    plt.rc('font', **{'family': 'serif', 'serif': ['Times New Roman']})
+    plt.rc('text', usetex=True)
     
     data = {
         'Model': list(itertools.chain.from_iterable([label] * len(vals) for vals, label in zip(vals_list, labels))),
@@ -104,12 +118,16 @@ def plot_error(vals_list, labels, title):
 
     df = pd.DataFrame(data)
 
-    plt.figure(figsize=(10, 6))
-    sns.boxplot(y='Model', x='RMSE', data=df)
+    plt.figure(figsize=(14, 4))
+    fig = sns.boxplot(y='Model', x='RMSE', data=df)
 
-    plt.ylabel('Model')
+    plt.ylabel('')
     plt.xlabel('APE RMSE')
-    plt.title(title)
+    # plt.title(title)
+    
+    if pdf_name:
+        Path('plots').mkdir(exist_ok=True)
+        plt.savefig(f'plots/{pdf_name}', format='pdf', bbox_inches='tight')
 
     plt.show()
 
@@ -135,16 +153,16 @@ def load_experiment(experiment_name: str):
     return logs_dict
 
 def analyze(logs_list: List[List[Log]], labels: List[str], sequence_name: str):
-    rmses = []
-    for logs, label in zip(logs_list, labels):
-        rmses.append(get_ape_rmses(logs, sequence_name))
-    # print(boq_rmse)
-    # plot_trajectory(logs_dict['boq'][0], '06')
+    # rmses = []
+    # for logs, label in zip(logs_list, labels):
+    #     rmses.append(get_ape_rmses(logs, sequence_name))
+    # # print(boq_rmse)
+    # # plot_trajectory(logs_dict['boq'][0], '06')
 
-    plot_error(rmses, labels, f'Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness')
+    # plot_error(rmses, labels, f'Absolute Pose Error final RMSE in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_ape.pdf')
 
     times = np.array([float(x) for x in Path(f'kitti/times/{sequence_name}.txt').read_text().split()])
-    plot_jitter(logs_list, labels, times, f'Time of loop closure in KITTI {sequence_name} Augmented Brightness')
+    plot_jitter(logs_list, labels, times, f'Time of loop closure in KITTI {sequence_name} Augmented Brightness', f'{sequence_name}_times.pdf')
     
     loop_closure_gt = LoopClosureGt.for_kitti(sequence_name)
     combined_pr = get_combined_pr(logs_list, labels, loop_closure_gt)
@@ -153,7 +171,7 @@ def analyze(logs_list: List[List[Log]], labels: List[str], sequence_name: str):
     # print(combined_pr)
 
 if __name__ == '__main__':
-    sequence_name = '06'
+    sequence_name = '05'
 
     logs_dict_default = load_experiment(f'{sequence_name}_brightness')
     logs_dict_04 = load_experiment(f'{sequence_name}_brightness_0.4')
